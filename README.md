@@ -1,4 +1,4 @@
-# 🎲 Tavla
+#  Tavla
 
 Klasik kurallarla, 2 kişilik, aynı cihazdan sırayla oynanan tam bir tavla (backgammon) uygulaması.
 

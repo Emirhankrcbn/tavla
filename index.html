@@ -61,6 +61,21 @@
     border:1px solid #4a3b26; color:#e8b96a; text-shadow:0 0 16px rgba(232,185,106,0.5);
   }
   #restart { display:none; pointer-events:auto; }
+
+  /* Telefonu yan çevirince (kısa yükseklik + landscape): tahtayı öncelikle
+     büyüt — HUD'u dar bir yan şeride sıkıştır, başlık ve yardım metnini gizle. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    body { flex-direction:row; align-items:stretch; padding:6px; gap:8px; }
+    h1, #infoDetails { display:none; }
+    #hud {
+      flex:0 0 auto; width:auto; align-self:center; gap:8px;
+      max-height:100%; overflow-y:auto; padding-right:2px;
+    }
+    #scoreBoard, #turnRow { flex-direction:column; gap:6px; }
+    #diceArea { min-height:auto; }
+    button { padding:9px 14px; min-height:38px; font-size:13px; }
+    #boardWrap { flex:1 1 auto; height:100%; }
+  }
 </style>
 </head>
 <body>
@@ -135,14 +150,15 @@ function playNoise(duration, volume=0.2){
   noise.connect(gain).connect(actx.destination);
   noise.start();
 }
+function vibrate(pattern){ if(navigator.vibrate) navigator.vibrate(pattern); }
 const sfx = {
-  dice: () => { for(let i=0;i<4;i++) setTimeout(()=>playTone(200+Math.random()*300,0.05,'square',0.06),i*40); },
+  dice: () => { for(let i=0;i<4;i++) setTimeout(()=>playTone(200+Math.random()*300,0.05,'square',0.06),i*40); vibrate(15); },
   move: () => playTone(340,0.06,'triangle',0.1,420),
-  hit: () => { playNoise(0.2,0.22); playTone(120,0.18,'sawtooth',0.14,50); },
+  hit: () => { playNoise(0.2,0.22); playTone(120,0.18,'sawtooth',0.14,50); vibrate(40); },
   bearoff: () => playTone(660,0.15,'square',0.12,880),
-  win: () => { [523,659,784,1046].forEach((f,i)=> setTimeout(()=>playTone(f,0.3,'square',0.15),i*130)); },
+  win: () => { [523,659,784,1046].forEach((f,i)=> setTimeout(()=>playTone(f,0.3,'square',0.15),i*130)); vibrate([80,60,80,60,120]); },
   select: () => playTone(500,0.04,'square',0.06),
-  invalid: () => playTone(150,0.1,'sawtooth',0.1)
+  invalid: () => { playTone(150,0.1,'sawtooth',0.1); vibrate(20); }
 };
 
 // ===== BOARD LAYOUT =====

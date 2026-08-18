@@ -2,22 +2,31 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#120c07">
 <title>Tavla - 2 Kişilik</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
+  * { margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overscroll-behavior:none; }
   body {
     background: radial-gradient(circle at 50% 20%, #2a1e14 0%, #120c07 75%);
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    min-height:100vh; font-family:'Segoe UI', Arial, sans-serif; color:#f0ead6;
-    padding: 16px;
+    display:flex; flex-direction:column; align-items:center;
+    height:100vh; height:100dvh; overflow:hidden;
+    font-family:'Segoe UI', Arial, sans-serif; color:#f0ead6;
+    padding: 8px 10px; gap:6px; touch-action:manipulation;
   }
   h1 {
-    letter-spacing:3px; font-size:24px; margin-bottom:8px;
+    letter-spacing:3px; font-size:18px; flex:0 0 auto;
     color:#e8b96a; text-shadow:0 0 14px rgba(232,185,106,0.5);
   }
-  #hud {
-    display:flex; align-items:center; gap:24px; margin-bottom:10px; font-size:15px;
-  }
+  #hud { display:flex; flex-direction:column; align-items:center; gap:6px; flex:0 0 auto; width:100%; font-size:13px; }
+  #scoreBoard { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; }
+  .score-pill { padding:5px 12px; border-radius:8px; font-weight:bold; }
+  .score-w { background:#f0ead6; color:#1a1a1a; }
+  .score-b { background:#2b2f38; color:#f0ead6; border:1px solid #555; }
+  #resetScoreBtn { background:#7a3b3b; color:#fff; padding:5px 12px; font-size:12px; min-height:auto; }
+  #resetScoreBtn:hover { background:#9a4b4b; }
+  #turnRow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center; }
   #turnLabel { font-weight:bold; padding:6px 14px; border-radius:8px; }
   .turn-w { background:#f0ead6; color:#1a1a1a; }
   .turn-b { background:#2b2f38; color:#f0ead6; border:1px solid #555; }
@@ -29,20 +38,29 @@
   }
   .die svg { width:26px; height:26px; }
   button {
-    padding:9px 18px; font-size:14px; cursor:pointer; border:none; border-radius:8px;
+    padding:11px 18px; min-height:42px; font-size:14px; cursor:pointer; border:none; border-radius:8px;
     font-weight:bold; background:#e8b96a; color:#1a1206;
   }
   button:hover { background:#f5cd8a; }
   button:disabled { background:#5a5040; color:#8a8270; cursor:not-allowed; }
-  canvas { border-radius:10px; box-shadow:0 0 40px rgba(0,0,0,0.6); }
-  #info { margin-top:10px; font-size:12px; color:#b5ab94; text-align:center; line-height:1.6; max-width:800px; }
-  #overlay { position:fixed; display:flex; flex-direction:column; align-items:center; gap:12px; }
+  #boardWrap {
+    flex:1 1 auto; min-height:0; min-width:0; width:100%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  canvas {
+    aspect-ratio: 820 / 600; width:auto; height:auto; max-width:100%; max-height:100%;
+    border-radius:10px; box-shadow:0 0 40px rgba(0,0,0,0.6); touch-action:manipulation;
+  }
+  #infoDetails { flex:0 0 auto; width:100%; max-width:800px; }
+  #infoDetails summary { text-align:center; font-size:12px; color:#d8c9a6; cursor:pointer; padding:4px; }
+  #info { margin-top:6px; font-size:12px; color:#b5ab94; text-align:center; line-height:1.6; }
+  #overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; pointer-events:none; z-index:20; }
   #msg {
-    font-size:34px; font-weight:bold; display:none; text-align:center;
+    font-size:28px; font-weight:bold; display:none; text-align:center;
     background:rgba(18,12,7,0.92); padding:20px 40px; border-radius:14px;
     border:1px solid #4a3b26; color:#e8b96a; text-shadow:0 0 16px rgba(232,185,106,0.5);
   }
-  #restart { display:none; }
+  #restart { display:none; pointer-events:auto; }
 </style>
 </head>
 <body>
@@ -50,25 +68,39 @@
 <h1>🎲 TAVLA 🎲</h1>
 
 <div id="hud">
-  <div id="turnLabel" class="turn-w">Sırada: Beyaz</div>
-  <div id="diceArea"></div>
-  <button id="rollBtn">Zar At</button>
-  <button id="passBtn" disabled>Hamle Yok - Geç</button>
+  <div id="scoreBoard">
+    <div class="score-pill score-w">Beyaz <span id="scoreW">0</span></div>
+    <div class="score-pill score-b">Siyah <span id="scoreB">0</span></div>
+    <button id="resetScoreBtn" title="Skoru Sıfırla">Skoru Sıfırla</button>
+  </div>
+  <div id="turnRow">
+    <div id="turnLabel" class="turn-w">Sırada: Beyaz</div>
+    <div id="diceArea"></div>
+    <button id="rollBtn">Zar At</button>
+    <button id="passBtn" disabled>Hamle Yok - Geç</button>
+  </div>
 </div>
 
-<canvas id="board" width="820" height="600"></canvas>
+<div id="boardWrap">
+  <canvas id="board" width="820" height="600"></canvas>
+</div>
 
 <div id="overlay">
   <div id="msg"></div>
   <button id="restart">Yeni Oyun</button>
 </div>
 
-<div id="info">
-  Beyaz taşlar 24 → 1 yönünde, siyah taşlar 1 → 24 yönünde ilerler. Zar attıktan sonra kendi taşına
-  tıkla, sonra yeşille işaretli geçerli noktaya tıklayarak taşı oynat. Barda (ortadaki çubuk) taşın
-  varsa önce onu oyuna sokmalısın. Tüm taşların iç tahtana (ev bölgesi) girince taşları dışarı
-  (off) alabilirsin.
-</div>
+<details id="infoDetails">
+  <summary>Nasıl Oynanır?</summary>
+  <div id="info">
+    Beyaz taşlar 24 → 1 yönünde, siyah taşlar 1 → 24 yönünde ilerler. Zar attıktan sonra kendi taşına
+    tıkla, sonra yeşille işaretli geçerli noktaya tıklayarak taşı oynat. Barda (ortadaki çubuk) taşın
+    varsa önce onu oyuna sokmalısın. Tüm taşların iç tahtana (ev bölgesi) girince taşları dışarı
+    (off) alabilirsin. Normal kazanışta 1 puan, rakip hiç taş çıkaramadan (mars) kazanırsan 2 puan,
+    rakip hem hiç taş çıkaramamış hem de senin iç tahtanda/barda taşı kalmışsa (çifte mars) 3 puan
+    kazanırsın.
+  </div>
+</details>
 
 <script>
 const canvas = document.getElementById('board');
@@ -129,6 +161,22 @@ function isTopRow(index){ return index>=12 && index<=23; }
 
 // ===== GAME STATE =====
 let points, bar, off, turn, remaining, selectedOrigin, legalMoves, gameOver;
+
+// ===== SCORE (persists across "Yeni Oyun", only "Skoru Sıfırla" resets it) =====
+let score = {w:0, b:0};
+function loadScore(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('tavla_score'));
+    if(saved && typeof saved.w==='number' && typeof saved.b==='number') score=saved;
+  }catch(e){}
+}
+function saveScore(){
+  try{ localStorage.setItem('tavla_score', JSON.stringify(score)); }catch(e){}
+}
+function updateScoreHUD(){
+  document.getElementById('scoreW').textContent = score.w;
+  document.getElementById('scoreB').textContent = score.b;
+}
 
 function initState(){
   points = new Array(24).fill(null).map(()=>({color:null,count:0}));
@@ -293,8 +341,29 @@ function switchTurn(){
 
 function endGame(winner){
   gameOver=true;
+  const loser = opp(winner);
+  let earned = 1;
+  let tag = '';
+  if(off[loser]===0){
+    // Mars (gammon): loser bore off nothing.
+    // Çifte mars (backgammon): loser also still has a checker on the bar
+    // or trapped inside the winner's home board.
+    const [hlo,hhi] = homeRange(winner);
+    let doubleMars = bar[loser]>0;
+    if(!doubleMars){
+      for(let i=hlo;i<=hhi;i++){
+        if(points[i].color===loser && points[i].count>0){ doubleMars=true; break; }
+      }
+    }
+    earned = doubleMars ? 3 : 2;
+    tag = doubleMars ? ' (ÇİFTE MARS! +3)' : ' (MARS! +2)';
+  }
+  score[winner] += earned;
+  saveScore();
+  updateScoreHUD();
+
   const msg=document.getElementById('msg');
-  msg.textContent = (winner==='w'?'BEYAZ':'SİYAH') + " KAZANDI!";
+  msg.textContent = (winner==='w'?'BEYAZ':'SİYAH') + " KAZANDI!" + tag;
   msg.style.display='block';
   document.getElementById('restart').style.display='block';
   document.getElementById('rollBtn').disabled=true;
@@ -325,6 +394,12 @@ document.getElementById('passBtn').addEventListener('click', ()=>{
 });
 
 document.getElementById('restart').addEventListener('click', initState);
+
+document.getElementById('resetScoreBtn').addEventListener('click', ()=>{
+  score = {w:0, b:0};
+  saveScore();
+  updateScoreHUD();
+});
 
 function updateHUD(){
   const label = document.getElementById('turnLabel');
@@ -569,6 +644,8 @@ function drawBarStack(color, count){
   }
 }
 
+loadScore();
+updateScoreHUD();
 initState();
 </script>
 </body>

@@ -1,0 +1,89 @@
+  * { margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overscroll-behavior:none; }
+  body {
+    background: radial-gradient(circle at 50% 20%, #2a1e14 0%, #120c07 75%);
+    display:flex; flex-direction:column; align-items:center;
+    height:100vh; height:100dvh; overflow:hidden;
+    font-family:'Segoe UI', Arial, sans-serif; color:#f0ead6;
+    padding: 8px 10px; gap:6px; touch-action:manipulation;
+  }
+  h1 {
+    letter-spacing:3px; font-size:18px; flex:0 0 auto;
+    color:#e8b96a; text-shadow:0 0 14px rgba(232,185,106,0.5);
+  }
+  #hud { display:flex; flex-direction:column; align-items:center; gap:6px; flex:0 0 auto; width:100%; font-size:13px; }
+  #scoreBoard { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; }
+  .score-pill { padding:5px 12px; border-radius:8px; font-weight:bold; }
+  .score-w { background:#f0ead6; color:#1a1a1a; }
+  .score-b { background:#2b2f38; color:#f0ead6; border:1px solid #555; }
+  #resetScoreBtn { background:#7a3b3b; color:#fff; padding:5px 12px; font-size:12px; min-height:auto; }
+  #resetScoreBtn:hover { background:#9a4b4b; }
+  #turnRow, #turnRowBottom { display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center; }
+  #turnRowBottom { flex:0 0 auto; width:100%; font-size:13px; transform:rotate(180deg); }
+  #turnLabel, #turnLabel2 { font-weight:bold; padding:6px 14px; border-radius:8px; }
+  .turn-w { background:#f0ead6; color:#1a1a1a; }
+  .turn-b { background:#2b2f38; color:#f0ead6; border:1px solid #555; }
+  #diceArea, #diceArea2 { display:flex; gap:6px; min-height:40px; align-items:center; }
+  .die {
+    width:34px; height:34px; background:#fff; border-radius:6px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 2px 6px rgba(0,0,0,0.5); position:relative;
+  }
+  .die svg { width:26px; height:26px; }
+  button {
+    padding:11px 18px; min-height:42px; font-size:14px; cursor:pointer; border:none; border-radius:8px;
+    font-weight:bold; background:#e8b96a; color:#1a1206;
+  }
+  button:hover { background:#f5cd8a; }
+  button:disabled { background:#5a5040; color:#8a8270; cursor:not-allowed; }
+  #boardWrap {
+    flex:1 1 auto; min-height:0; min-width:0; width:100%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  canvas {
+    aspect-ratio: 820 / 600; width:auto; height:auto; max-width:100%; max-height:100%;
+    border-radius:10px; box-shadow:0 0 40px rgba(0,0,0,0.6); touch-action:manipulation;
+  }
+  #infoDetails { flex:0 0 auto; width:100%; max-width:800px; }
+  #infoDetails summary { text-align:center; font-size:12px; color:#d8c9a6; cursor:pointer; padding:4px; }
+  #info { margin-top:6px; font-size:12px; color:#b5ab94; text-align:center; line-height:1.6; }
+  #overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; pointer-events:none; z-index:20; }
+  #msg {
+    font-size:28px; font-weight:bold; display:none; text-align:center;
+    background:rgba(18,12,7,0.92); padding:20px 40px; border-radius:14px;
+    border:1px solid #4a3b26; color:#e8b96a; text-shadow:0 0 16px rgba(232,185,106,0.5);
+  }
+  #restart { display:none; pointer-events:auto; }
+  #undoBtn { background:#4a4038; color:#f0ead6; }
+  #undoBtn:hover { background:#5c5044; }
+  #openRollOverlay {
+    position:fixed; inset:0; z-index:30; display:none;
+    align-items:center; justify-content:center;
+    background:rgba(10,7,4,0.82); pointer-events:auto;
+  }
+  #openRollOverlay .modal-box {
+    background:rgba(18,12,7,0.97); border:1px solid #4a3b26; border-radius:14px;
+    padding:26px 30px; display:flex; flex-direction:column; align-items:center; gap:14px;
+    max-width:90vw;
+  }
+  #openRollTitle { font-size:18px; font-weight:bold; color:#e8b96a; text-align:center; }
+  #openRollSub { font-size:12px; color:#b5ab94; text-align:center; max-width:280px; }
+  .open-roll-dice { display:flex; gap:26px; align-items:flex-end; }
+  .orDieWrap { display:flex; flex-direction:column; align-items:center; gap:6px; font-size:12px; color:#d8c9a6; }
+  #openRollResult { font-size:14px; font-weight:bold; color:#e8b96a; min-height:20px; text-align:center; }
+
+  /* Telefonu yan çevirince (kısa yükseklik + landscape): tahtayı öncelikle
+     büyüt — HUD'u dar bir yan şeride sıkıştır, başlık ve yardım metnini gizle. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    body { flex-direction:row; align-items:stretch; padding:6px; gap:8px; }
+    h1, #infoDetails { display:none; }
+    #hud {
+      flex:0 0 auto; width:auto; align-self:center; gap:8px;
+      max-height:100%; overflow-y:auto; padding-right:2px;
+    }
+    #scoreBoard, #turnRow { flex-direction:column; gap:6px; }
+    #diceArea { min-height:auto; }
+    button { padding:9px 14px; min-height:38px; font-size:13px; }
+    #boardWrap { flex:1 1 auto; height:100%; }
+    #turnRowBottom { display:none; }
+  }

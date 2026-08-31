@@ -43,7 +43,7 @@
   }
   .die svg { width:26px; height:26px; }
   button {
-    padding:11px 18px; min-height:42px; font-size:14px; cursor:pointer; border:none; border-radius:8px;
+    padding:9px 15px; min-height:38px; font-size:13px; cursor:pointer; border:none; border-radius:8px;
     font-weight:bold; background:#e8b96a; color:#1a1206;
   }
   button:hover { background:#f5cd8a; }

@@ -81,9 +81,12 @@
       flex:0 0 auto; width:auto; align-self:center; gap:8px;
       max-height:100%; overflow-y:auto; padding-right:2px;
     }
-    #scoreBoard, #turnRow { flex-direction:column; gap:6px; }
-    #diceArea { min-height:auto; }
+    #turnRowBottom {
+      flex:0 0 auto; width:auto; align-self:center; gap:8px;
+      max-height:100%; overflow-y:auto; padding-left:2px;
+    }
+    #scoreBoard, #turnRow, #turnRowBottom { flex-direction:column; gap:6px; }
+    #diceArea, #diceArea2 { min-height:auto; }
     button { padding:9px 14px; min-height:38px; font-size:13px; }
     #boardWrap { flex:1 1 auto; height:100%; }
-    #turnRowBottom { display:none; }
   }

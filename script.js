@@ -456,7 +456,7 @@ document.getElementById('openRollBtn').addEventListener('click', ()=>{
 function syncMirror(){
   const label = document.getElementById('turnLabel');
   const label2 = document.getElementById('turnLabel2');
-  label2.textContent = label.textContent;
+  label2.innerHTML = label.innerHTML;
   label2.className = label.className;
 
   document.getElementById('diceArea2').innerHTML = document.getElementById('diceArea').innerHTML;
@@ -472,8 +472,9 @@ document.getElementById('undoBtn2').addEventListener('click', ()=> document.getE
 
 function updateHUD(){
   const label = document.getElementById('turnLabel');
-  label.textContent = "Sırada: " + (turn==='w'?'Beyaz':'Siyah');
-  label.className = turn==='w' ? 'turn-w' : 'turn-b';
+  const isWhite = turn==='w';
+  label.innerHTML = '<span class="turn-dot"></span>' + (isWhite ? 'BEYAZ OYNUYOR' : 'SİYAH OYNUYOR');
+  label.className = isWhite ? 'turn-w' : 'turn-b';
   syncMirror();
 }
 

@@ -464,6 +464,14 @@ function syncMirror(){
   document.getElementById('rollBtn2').disabled = document.getElementById('rollBtn').disabled;
   document.getElementById('passBtn2').disabled = document.getElementById('passBtn').disabled;
   document.getElementById('undoBtn2').disabled = document.getElementById('undoBtn').disabled;
+
+  // Üst koltuk (rollBtn/passBtn) hep Beyaz'a, alt koltuk (rollBtn2/passBtn2) hep Siyah'a aittir.
+  // Sırası gelmeyen tarafın Zar At / Geç butonu, karşı taraf adına basılmasın diye kilitlenir.
+  const whiteTurn = turn === 'w';
+  document.getElementById('rollBtn').disabled = document.getElementById('rollBtn').disabled || !whiteTurn;
+  document.getElementById('passBtn').disabled = document.getElementById('passBtn').disabled || !whiteTurn;
+  document.getElementById('rollBtn2').disabled = document.getElementById('rollBtn2').disabled || whiteTurn;
+  document.getElementById('passBtn2').disabled = document.getElementById('passBtn2').disabled || whiteTurn;
 }
 
 document.getElementById('rollBtn2').addEventListener('click', ()=> document.getElementById('rollBtn').click());

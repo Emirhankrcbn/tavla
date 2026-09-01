@@ -336,7 +336,7 @@ function endGame(winner){
   sfx.win();
 }
 
-document.getElementById('rollBtn').addEventListener('click', ()=>{
+function doRoll(){
   if(gameOver) return;
   const d1 = 1+Math.floor(Math.random()*6);
   const d2 = 1+Math.floor(Math.random()*6);
@@ -353,19 +353,22 @@ document.getElementById('rollBtn').addEventListener('click', ()=>{
   }
   updateHUD();
   draw();
-});
+}
+document.getElementById('rollBtn').addEventListener('click', doRoll);
 
-document.getElementById('passBtn').addEventListener('click', ()=>{
+function doPass(){
   pushUndo();
   switchTurn();
   renderDice();
-});
+}
+document.getElementById('passBtn').addEventListener('click', doPass);
 
-document.getElementById('undoBtn').addEventListener('click', ()=>{
+function doUndo(){
   if(undoStack.length===0) return;
   restoreState(undoStack.pop());
   updateUndoBtn();
-});
+}
+document.getElementById('undoBtn').addEventListener('click', doUndo);
 
 document.getElementById('restart').addEventListener('click', initState);
 
@@ -474,9 +477,9 @@ function syncMirror(){
   document.getElementById('passBtn2').disabled = document.getElementById('passBtn2').disabled || whiteTurn;
 }
 
-document.getElementById('rollBtn2').addEventListener('click', ()=> document.getElementById('rollBtn').click());
-document.getElementById('passBtn2').addEventListener('click', ()=> document.getElementById('passBtn').click());
-document.getElementById('undoBtn2').addEventListener('click', ()=> document.getElementById('undoBtn').click());
+document.getElementById('rollBtn2').addEventListener('click', doRoll);
+document.getElementById('passBtn2').addEventListener('click', doPass);
+document.getElementById('undoBtn2').addEventListener('click', doUndo);
 
 function updateHUD(){
   const label = document.getElementById('turnLabel');

@@ -72,7 +72,10 @@ function isTopRow(index){ return index>=12 && index<=23; }
 // points[i]: {color:'w'|'b'|null, count:n} — 24 nokta üzerindeki taş dizilişi.
 // bar/off: her renk için barda bekleyen ve dışarı çıkmış taş sayısı.
 // remaining: bu elde henüz kullanılmamış zar değerleri (çift gelirse 4 eleman).
-let points, bar, off, turn, remaining, selectedOrigin, legalMoves, gameOver;
+// legalMoves: seçili taşın tek bir zarla gidebileceği hedefler.
+// combinedMoves: seçili taşın iki zarın TOPLAMIYLA (araya uğrayarak) tek hamlede
+// gidebileceği hedefler — sadece tek zarla ulaşılamayan noktalar için anlamlıdır.
+let points, bar, off, turn, remaining, selectedOrigin, legalMoves, combinedMoves, gameOver;
 
 // ===== UNDO (protects against accidental taps) =====
 // Her hamle/pas öncesi tam bir durum anlık görüntüsü (snapshot) buraya eklenir.
@@ -118,6 +121,7 @@ function initState(){
   remaining = [];
   selectedOrigin = null;
   legalMoves = [];
+  combinedMoves = [];
   gameOver = false;
   undoStack = [];
   updateUndoBtn();
@@ -212,6 +216,70 @@ function computeLegalMoves(origin, color){
   return moves;
 }
 
+// Seçili taşın, elde kalan İKİ zarın toplamını art arda kullanarak (ara
+// noktaya uğrayıp oradan devam ederek) tek hamlede gidebileceği hedefleri
+// bulur. Ara nokta gerçek bir tahta noktası olmalı (bar/off değil) ve
+// evalMove'un blok kontrolünden geçmeli — yani tek rakip taşı varsa oradan
+// geçilebilir (ve gerçek tavla kuralı gereği o taş orada vurulur).
+// Her iki zar sırası da denenir; aynı hedefe ulaşan ilk geçerli kombinasyon yeterlidir.
+function computeCombinedMoves(origin, color){
+  const combos = [];
+  if(remaining.length<2) return combos;
+  const seenFinal = new Set();
+  for(let i=0;i<remaining.length;i++){
+    for(let j=0;j<remaining.length;j++){
+      if(i===j) continue;
+      const dieA = remaining[i], dieB = remaining[j];
+      const leg1 = evalMove(origin, dieA, color);
+      if(!leg1 || leg1.type!=='point') continue; // ara durak gerçek bir tahta noktası olmalı
+
+      // evalMove, taşın origin'de gerçekten durduğunu varsayar; ikinci bacağı
+      // doğru değerlendirebilmek için taşı geçici olarak ara noktaya "koyup"
+      // hemen ardından eski haline döndürüyoruz (ses/skor yan etkisi yok).
+      const undoSim = simulateMove(origin, leg1, color);
+      const final = evalMove(leg1.index, dieB, color);
+      undoSim();
+
+      if(!final) continue;
+      const key = final.type==='off' ? 'off' : ('p'+final.index);
+      if(seenFinal.has(key)) continue;
+      seenFinal.add(key);
+      combos.push({ dieA, dieB, leg1, final });
+    }
+  }
+  return combos;
+}
+
+// origin -> leg (bir noktaya iniş) hamlesini points/bar üzerinde geçici
+// olarak uygular ve çağrılınca eski haline döndüren bir fonksiyon verir.
+// Yalnızca computeCombinedMoves'un ikinci bacağı hesaplayabilmesi içindir;
+// gerçek bir hamle uygulamaz (ses çalmaz, zar tüketmez).
+function simulateMove(origin, leg, color){
+  const destIdx = leg.index;
+  const prevOriginBar = bar[color];
+  const prevOrigin = origin==='bar' ? null : {...points[origin]};
+  const prevDest = {...points[destIdx]};
+  const prevOppBar = bar[opp(color)];
+
+  if(origin==='bar'){
+    bar[color]--;
+  } else {
+    points[origin] = { color: prevOrigin.count>1 ? color : null, count: prevOrigin.count-1 };
+  }
+  if(prevDest.color!==null && prevDest.color!==color && prevDest.count>0){
+    bar[opp(color)]++;
+    points[destIdx] = { color, count:1 };
+  } else {
+    points[destIdx] = { color, count: (prevDest.color===color ? prevDest.count : 0) + 1 };
+  }
+
+  return function undoSim(){
+    if(origin==='bar'){ bar[color] = prevOriginBar; } else { points[origin] = prevOrigin; }
+    points[destIdx] = prevDest;
+    bar[opp(color)] = prevOppBar;
+  };
+}
+
 // Verilen renk için kalan zarlarla oynanabilecek herhangi bir hamle var mı diye bakar.
 // Yoksa "Hamle Yok - Geç" butonu devreye girer.
 function hasAnyLegalMove(color){
@@ -269,6 +337,7 @@ function restoreState(s){
   gameOver = s.gameOver;
   selectedOrigin = null;
   legalMoves = [];
+  combinedMoves = [];
   saveScore();
   updateScoreHUD();
   updateHUD();
@@ -290,10 +359,10 @@ function restoreState(s){
   draw();
 }
 
-// Seçilen taşı (origin) hedefine taşır: rakip taşı vurma, bar'a gönderme,
-// zar tüketme ve el/oyun sonu kontrollerinin tamamı burada yapılır.
-function applyMove(origin, move){
-  pushUndo();
+// Tek bir (origin -> move) adımının ham etkisini uygular: rakip taşı vurma,
+// bar'a gönderme ve zar tüketme. pushUndo/oyun-sonu kontrolleri burada YOK,
+// çünkü iki bacaklı bir "toplam" hamlede bu iki kez art arda çağrılır.
+function applyMoveCore(origin, move){
   const color = turn;
   // remove from origin
   if(origin==='bar'){ bar[color]--; }
@@ -319,8 +388,12 @@ function applyMove(origin, move){
   // consume die
   const idx = remaining.indexOf(move.die);
   remaining.splice(idx,1);
+}
 
-  selectedOrigin=null; legalMoves=[];
+// Bir hamle (veya toplam hamlenin son bacağı) uygulandıktan sonra ortak
+// bitiş kontrolleri: oyun bitti mi, hiç hamle kalmadıysa elin devri, HUD/çizim.
+function finishMoveTail(color){
+  selectedOrigin=null; legalMoves=[]; combinedMoves=[];
 
   if(off[color]===15){
     endGame(color);
@@ -336,6 +409,27 @@ function applyMove(origin, move){
     updateHUD();
   }
   draw();
+}
+
+// Seçilen taşı (origin) tek bir zarla hedefine taşır.
+function applyMove(origin, move){
+  pushUndo();
+  const color = turn;
+  applyMoveCore(origin, move);
+  finishMoveTail(color);
+}
+
+// Seçilen taşı, iki zarın TOPLAMIYLA (computeCombinedMoves'ten gelen bir
+// kombinasyonla) tek hamlede hedefine taşır. Ara noktaya da gerçekten
+// uğranır — orada tek rakip taşı varsa (gerçek tavla kuralı gereği) o da
+// vurulur, tıpkı iki ayrı hamle yapılmış gibi. pushUndo tek sefer çağrılır,
+// böylece "Geri Al" tüm toplam hamleyi tek seferde geri alır.
+function applyCombinedMove(origin, combo){
+  pushUndo();
+  const color = turn;
+  applyMoveCore(origin, { die:combo.dieA, ...combo.leg1 });
+  applyMoveCore(combo.leg1.index, { die:combo.dieB, ...combo.final });
+  finishMoveTail(color);
 }
 
 // Sırayı rakip renge devreder ve zar/buton durumunu yeni el için sıfırlar.
@@ -598,6 +692,8 @@ canvas.addEventListener('click', (e)=>{
   if(selectedOrigin!==null && mx>=offX && mx<=offX+offW){
     const mv = legalMoves.find(m=>m.type==='off');
     if(mv){ applyMove(selectedOrigin, mv); renderRemainingDice(); return; }
+    const cmv = combinedMoves.find(c=>c.final.type==='off');
+    if(cmv){ applyCombinedMove(selectedOrigin, cmv); renderRemainingDice(); return; }
   }
 
   // check bar click
@@ -605,7 +701,8 @@ canvas.addEventListener('click', (e)=>{
     if(bar[turn]>0){
       selectedOrigin='bar';
       legalMoves = computeLegalMoves('bar', turn);
-      if(legalMoves.length===0) sfx.invalid(); else sfx.select();
+      combinedMoves = computeCombinedMoves('bar', turn);
+      if(legalMoves.length===0 && combinedMoves.length===0) sfx.invalid(); else sfx.select();
       draw();
     }
     return;
@@ -623,10 +720,12 @@ canvas.addEventListener('click', (e)=>{
   }
   if(clickedIndex===null) return;
 
-  // if a legal destination among current legalMoves
+  // if a legal destination among current legalMoves (tek zar) or combinedMoves (iki zarın toplamı)
   if(selectedOrigin!==null){
     const mv = legalMoves.find(m=>m.type==='point' && m.index===clickedIndex);
     if(mv){ applyMove(selectedOrigin, mv); renderRemainingDice(); return; }
+    const cmv = combinedMoves.find(c=>c.final.type==='point' && c.final.index===clickedIndex);
+    if(cmv){ applyCombinedMove(selectedOrigin, cmv); renderRemainingDice(); return; }
   }
 
   // otherwise try selecting this point as origin
@@ -634,10 +733,11 @@ canvas.addEventListener('click', (e)=>{
   if(points[clickedIndex].color===turn && points[clickedIndex].count>0){
     selectedOrigin=clickedIndex;
     legalMoves = computeLegalMoves(clickedIndex, turn);
-    if(legalMoves.length===0) sfx.invalid(); else sfx.select();
+    combinedMoves = computeCombinedMoves(clickedIndex, turn);
+    if(legalMoves.length===0 && combinedMoves.length===0) sfx.invalid(); else sfx.select();
     draw();
   } else {
-    selectedOrigin=null; legalMoves=[];
+    selectedOrigin=null; legalMoves=[]; combinedMoves=[];
     draw();
   }
 });
@@ -698,10 +798,14 @@ function draw(){
     ctx.closePath();
     ctx.fill();
 
-    // highlight legal target
+    // highlight legal target: yeşil = tek zarla gidilebilir, turuncu = sadece iki zarın toplamıyla
     const isLegalTarget = legalMoves.some(m=>m.type==='point' && m.index===i);
+    const isComboTarget = !isLegalTarget && combinedMoves.some(c=>c.final.type==='point' && c.final.index===i);
     if(isLegalTarget){
       ctx.fillStyle='rgba(92,255,140,0.35)';
+      ctx.fill();
+    } else if(isComboTarget){
+      ctx.fillStyle='rgba(255,176,60,0.4)';
       ctx.fill();
     }
     if(selectedOrigin===i){
@@ -739,8 +843,12 @@ function draw(){
   ctx.fillStyle='#2a1a0f';
   ctx.fillRect(offX,boardY,offW,boardH);
   const offTargetLegal = legalMoves.some(m=>m.type==='off');
+  const offTargetCombo = !offTargetLegal && combinedMoves.some(c=>c.final.type==='off');
   if(offTargetLegal){
     ctx.fillStyle='rgba(92,255,140,0.35)';
+    ctx.fillRect(offX,boardY,offW,boardH);
+  } else if(offTargetCombo){
+    ctx.fillStyle='rgba(255,176,60,0.4)';
     ctx.fillRect(offX,boardY,offW,boardH);
   }
   ctx.font='bold 13px Arial'; ctx.textAlign='center';

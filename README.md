@@ -10,7 +10,7 @@ Klasik kurallarla, 2 kişilik, aynı cihazdan (yüz yüze) sırayla oynanan tam 
 - Kendi taşına tıkla → geçerli noktalar yeşille işaretlenir → hedefe tıkla
 - Barda taşın varsa önce onu oyuna sokman gerekir
 - Tüm taşların iç tahtana girince taşları dışarı (off) çıkarabilirsin
-- Yanlışlıkla bastıysan "↩ Geri Al" ile son hamleni veya geçişini geri alabilirsin
+- Yanlışlıkla bastıysan " Geri Al" ile son hamleni veya geçişini geri alabilirsin
 
 ## Özellikler
 - Standart 15'er taş dizilişi, tam kurallar (vurma, bar, bear-off)

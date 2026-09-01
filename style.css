@@ -18,8 +18,11 @@
   .score-b { background:#2b2f38; color:#f0ead6; border:1px solid #555; }
   #resetScoreBtn { background:#7a3b3b; color:#fff; padding:5px 12px; font-size:12px; min-height:auto; }
   #resetScoreBtn:hover { background:#9a4b4b; }
-  #turnRow, #turnRowBottom { display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center; }
-  #turnRowBottom { flex:0 0 auto; width:100%; font-size:13px; transform:rotate(180deg); }
+  #turnRow, #turnRowBottom {
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;
+    flex:0 0 auto; width:100%; font-size:13px;
+  }
+  #turnRowBottom { transform:rotate(180deg); }
   #turnLabel, #turnLabel2 {
     font-weight:800; padding:9px 20px; border-radius:999px;
     font-size:15px; letter-spacing:0.5px;
@@ -89,14 +92,11 @@
   @media (orientation: landscape) and (max-height: 500px) {
     body { flex-direction:row; align-items:stretch; padding:6px; gap:8px; }
     h1, #infoDetails { display:none; }
-    #hud {
+    #hud, #turnRow, #turnRowBottom {
       flex:0 0 auto; width:auto; align-self:center; gap:8px;
-      max-height:100%; overflow-y:auto; padding-right:2px;
+      max-height:100%; overflow-y:auto;
     }
-    #turnRowBottom {
-      flex:0 0 auto; width:auto; align-self:center; gap:8px;
-      max-height:100%; overflow-y:auto; padding-left:2px;
-    }
+    #hud { padding-right:2px; }
     #scoreBoard, #turnRow, #turnRowBottom { flex-direction:column; gap:6px; }
     #diceArea, #diceArea2 { min-height:auto; }
     button { padding:9px 14px; min-height:38px; font-size:13px; }

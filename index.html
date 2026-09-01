@@ -11,6 +11,7 @@
 
 <h1>🎲 TAVLA 🎲</h1>
 
+<!-- Skor tahtası: her iki tarafın puanı ve maçı sıfırlayan buton. -->
 <div id="hud">
   <div id="scoreBoard">
     <div class="score-pill score-w">Beyaz <span id="scoreW">0</span></div>
@@ -19,6 +20,16 @@
   </div>
 </div>
 
+<!--
+  Karşılıklı (yüz yüze) oynanış için iki ayrı kontrol çubuğu var:
+  - Bu çubuk (turnRowBottom) 180° döndürülmüştür ve tahtanın ÜSTÜNDE durur,
+    böylece telefonun üst kenarına yakın oturan Siyah oyuncu kendi butonlarını
+    ters çevrilmeden okuyabilir.
+  - Aşağıdaki turnRow ise döndürülmemiştir ve tahtanın ALTINDA durur, alt
+    kenara yakın oturan Beyaz oyuncuya bakar.
+  İkisi de script.js'teki syncMirror() ile senkron tutulur; sırası gelmeyen
+  tarafın butonları otomatik olarak devre dışı kalır.
+-->
 <div id="turnRowBottom" title="Siyah'a bakan kontroller">
   <div id="turnLabel2" class="turn-w"><span class="turn-dot"></span>BEYAZ OYNUYOR</div>
   <div id="diceArea2"></div>
@@ -27,10 +38,12 @@
   <button id="undoBtn2" disabled title="Son Hamleyi Geri Al">↩ Geri Al</button>
 </div>
 
+<!-- Tavla tahtası: tüm oyun mantığı canvas üzerine JavaScript ile çizilir. -->
 <div id="boardWrap">
   <canvas id="board" width="820" height="600"></canvas>
 </div>
 
+<!-- Beyaz'a bakan (döndürülmemiş) kontrol çubuğu — bkz. yukarıdaki turnRowBottom açıklaması. -->
 <div id="turnRow" title="Beyaz'a bakan kontroller">
   <div id="turnLabel" class="turn-w"><span class="turn-dot"></span>BEYAZ OYNUYOR</div>
   <div id="diceArea"></div>
@@ -39,11 +52,14 @@
   <button id="undoBtn" disabled title="Son Hamleyi Geri Al">↩ Geri Al</button>
 </div>
 
+<!-- Oyun bitince görünen kazanma mesajı ve "Yeni Oyun" butonu (tahtanın üzerine yarı saydam kaplama). -->
 <div id="overlay">
   <div id="msg"></div>
   <button id="restart">Yeni Oyun</button>
 </div>
 
+<!-- Skor 0-0 iken açılan modal: taraflar sırayla (önce Beyaz, sonra Siyah) tek zar atıp
+     kimin başlayacağına karar verir. Berabere gelirse baştan atılır. -->
 <div id="openRollOverlay">
   <div class="modal-box">
     <div id="openRollTitle">Kim Başlayacak?</div>
@@ -57,6 +73,7 @@
   </div>
 </div>
 
+<!-- Kısa kurallar özeti; varsayılan olarak kapalı, tıklanınca açılır. -->
 <details id="infoDetails">
   <summary>Nasıl Oynanır?</summary>
   <div id="info">

@@ -3,10 +3,15 @@ const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 
 // ===== SES MOTORU =====
+// Web Audio API ile küçük efekt sesleri (zar, hamle, vuruş, kazanma) üretir.
+// Tarayıcılar kullanıcı etkileşimi olmadan ses çalmaya izin vermediği için
+// ilk tıklama/tuş basımında AudioContext "unlock" edilir.
 const actx = new (window.AudioContext || window.webkitAudioContext)();
 function unlockAudio(){ if(actx.state==="suspended") actx.resume(); }
 window.addEventListener('click', unlockAudio);
 window.addEventListener('keydown', unlockAudio);
+
+// Tek bir osilatör notası çalar (zar/hamle/kazanma seslerinin temel yapı taşı).
 function playTone(freq, duration, type='square', volume=0.15, glideTo=null){
   const osc = actx.createOscillator(), gain = actx.createGain();
   osc.type = type;
@@ -17,6 +22,8 @@ function playTone(freq, duration, type='square', volume=0.15, glideTo=null){
   osc.connect(gain).connect(actx.destination);
   osc.start(); osc.stop(actx.currentTime + duration);
 }
+
+// Kısa bir "gürültü" patlaması üretir (taş vurma sesinin çarpma efekti için).
 function playNoise(duration, volume=0.2){
   const bufferSize = actx.sampleRate*duration;
   const buffer = actx.createBuffer(1, bufferSize, actx.sampleRate);
@@ -31,6 +38,8 @@ function playNoise(duration, volume=0.2){
   noise.start();
 }
 function vibrate(pattern){ if(navigator.vibrate) navigator.vibrate(pattern); }
+
+// Oyun boyunca tetiklenen tüm ses/titreşim efektleri, olay adına göre gruplanmış.
 const sfx = {
   dice: () => { for(let i=0;i<4;i++) setTimeout(()=>playTone(200+Math.random()*300,0.05,'square',0.06),i*40); vibrate(15); },
   move: () => playTone(340,0.06,'triangle',0.1,420),
@@ -42,23 +51,31 @@ const sfx = {
 };
 
 // ===== BOARD LAYOUT =====
+// Tahtanın piksel geometrisi: kenar boşlukları, çeyrek/nokta genişlikleri, bar ve off tepsisi konumu.
 const boardX=40, boardY=40, boardW=740, boardH=480, barWidth=44;
 const quadWidth=(boardW-barWidth)/2, pointWidth=quadWidth/6, rowHeight=240;
 const barX = boardX+quadWidth;
 const offX = boardX+boardW+16, offW=26;
 
+// 0-23 arası nokta indeksini canvas üzerindeki x koordinatına çevirir.
+// Tavla noktaları saat yönünün tersine numaralandığı için dört çeyrek ayrı ayrı hesaplanır.
 function pointX(index){
   if(index>=12 && index<=17) return boardX + (index-12)*pointWidth;
   if(index>=18 && index<=23) return barX+barWidth + (index-18)*pointWidth;
   if(index>=6 && index<=11) return boardX + (11-index)*pointWidth;
   if(index>=0 && index<=5) return barX+barWidth + (5-index)*pointWidth;
 }
+// 12-23 arası noktalar tahtanın üst sırasında, 0-11 arası alt sırasındadır.
 function isTopRow(index){ return index>=12 && index<=23; }
 
 // ===== GAME STATE =====
+// points[i]: {color:'w'|'b'|null, count:n} — 24 nokta üzerindeki taş dizilişi.
+// bar/off: her renk için barda bekleyen ve dışarı çıkmış taş sayısı.
+// remaining: bu elde henüz kullanılmamış zar değerleri (çift gelirse 4 eleman).
 let points, bar, off, turn, remaining, selectedOrigin, legalMoves, gameOver;
 
 // ===== UNDO (protects against accidental taps) =====
+// Her hamle/pas öncesi tam bir durum anlık görüntüsü (snapshot) buraya eklenir.
 let undoStack = [];
 
 // ===== SCORE (persists across "Yeni Oyun", only "Skoru Sıfırla" resets it) =====
@@ -66,6 +83,8 @@ let undoStack = [];
 // Reset to null (needing a fresh opening dice roll) whenever score is reset to 0-0.
 let score = {w:0, b:0};
 let nextStarter = null;
+
+// Skoru (ve bir sonraki eli kimin başlatacağını) tarayıcının localStorage'ından okur.
 function loadScore(){
   try{
     const saved = JSON.parse(localStorage.getItem('tavla_score'));
@@ -75,14 +94,19 @@ function loadScore(){
     }
   }catch(e){}
 }
+// Skoru (ve nextStarter'ı) localStorage'a yazar; sayfa yenilense de kaybolmaz.
 function saveScore(){
   try{ localStorage.setItem('tavla_score', JSON.stringify({w:score.w, b:score.b, nextStarter})); }catch(e){}
 }
+// Skor tahtasındaki Beyaz/Siyah puan yazılarını günceller.
 function updateScoreHUD(){
   document.getElementById('scoreW').textContent = score.w;
   document.getElementById('scoreB').textContent = score.b;
 }
 
+// Yeni bir el başlatır: taşları standart diziliş üzerine kurar, zar/hamle
+// durumunu sıfırlar ve sırayı nextStarter'a (bir önceki elin kazananına,
+// yoksa Beyaz'a) verir.
 function initState(){
   points = new Array(24).fill(null).map(()=>({color:null,count:0}));
   const set=(i,c,n)=>{points[i]={color:c,count:n};};
@@ -106,10 +130,15 @@ function initState(){
   draw();
 }
 
+// Rengin rakibini döndürür ('w' <-> 'b').
 function opp(c){ return c==='w'?'b':'w'; }
 
+// Bir rengin "iç tahta" (ev bölgesi) aralığını döndürür; taşlar buraya
+// girmeden dışarı (off) çıkarılamaz.
 function homeRange(c){ return c==='w' ? [0,5] : [18,23]; }
 
+// Verilen rengin tüm taşlarının (barda hiçbiri kalmadan) iç tahtada
+// olup olmadığını kontrol eder — bear-off'a başlayabilmenin şartıdır.
 function allInHome(c){
   const [lo,hi]=homeRange(c);
   let total=0;
@@ -119,6 +148,8 @@ function allInHome(c){
   return total===inHome && bar[c]===0;
 }
 
+// Bir taşın belirli bir zar değeriyle nereye gideceğini hesaplar.
+// Beyaz 24->1 yönünde, Siyah 1->24 yönünde ilerler; "bar"dan giriş özel bir başlangıç noktasıdır.
 function target(origin, die, color){
   if(color==='w'){
     if(origin==='bar') return 24-die;
@@ -129,6 +160,7 @@ function target(origin, die, color){
   }
 }
 
+// Tek bir (origin, zar) kombinasyonunun geçerli olup olmadığını değerlendirir.
 // returns {type:'point',index} | {type:'off'} | null(illegal)
 function evalMove(origin, die, color){
   if(origin==='bar' && bar[color]<=0) return null;
@@ -168,6 +200,8 @@ function evalMove(origin, die, color){
   }
 }
 
+// Seçili bir taş için kalan zarların her birine göre mümkün olan tüm hamleleri listeler
+// (tahtada yeşille işaretlenecek hedefleri belirlemek için kullanılır).
 function computeLegalMoves(origin, color){
   const moves=[];
   const uniqueDice = [...new Set(remaining)];
@@ -178,6 +212,8 @@ function computeLegalMoves(origin, color){
   return moves;
 }
 
+// Verilen renk için kalan zarlarla oynanabilecek herhangi bir hamle var mı diye bakar.
+// Yoksa "Hamle Yok - Geç" butonu devreye girer.
 function hasAnyLegalMove(color){
   const uniqueDice = [...new Set(remaining)];
   if(uniqueDice.length===0) return false;
@@ -193,6 +229,8 @@ function hasAnyLegalMove(color){
 }
 
 // ===== UNDO =====
+// Geri alınabilecek her şeyi (tahta, bar, off, sıra, zarlar, skor, kazanma
+// mesajı ve buton durumları) tek bir nesnede toplar.
 function snapshotState(){
   return {
     points: points.map(p=>({color:p.color, count:p.count})),
@@ -207,15 +245,19 @@ function snapshotState(){
     passBtnDisabled: document.getElementById('passBtn').disabled,
   };
 }
+// Her hamle/pas öncesi çağrılır; mevcut durumu yığına (stack) ekler.
 function pushUndo(){
   undoStack.push(snapshotState());
   if(undoStack.length>200) undoStack.shift();
   updateUndoBtn();
 }
+// "Geri Al" butonunun etkin/pasif durumunu yığının doluluğuna göre ayarlar.
 function updateUndoBtn(){
   document.getElementById('undoBtn').disabled = undoStack.length===0;
   syncMirror();
 }
+// Bir snapshot'ı geri yükler: tüm oyun değişkenlerini ve ilgili DOM
+// elemanlarını (mesaj, butonlar, zarlar) o ana ait haline döndürür.
 function restoreState(s){
   points = s.points.map(p=>({color:p.color, count:p.count}));
   bar = {...s.bar};
@@ -248,6 +290,8 @@ function restoreState(s){
   draw();
 }
 
+// Seçilen taşı (origin) hedefine taşır: rakip taşı vurma, bar'a gönderme,
+// zar tüketme ve el/oyun sonu kontrollerinin tamamı burada yapılır.
 function applyMove(origin, move){
   pushUndo();
   const color = turn;
@@ -294,6 +338,7 @@ function applyMove(origin, move){
   draw();
 }
 
+// Sırayı rakip renge devreder ve zar/buton durumunu yeni el için sıfırlar.
 function switchTurn(){
   turn = opp(turn);
   remaining=[];
@@ -303,6 +348,9 @@ function switchTurn(){
   updateHUD();
 }
 
+// Oyunu bitirir: mars/çifte mars durumuna göre kazanılan puanı hesaplar,
+// skoru günceller, kazanma mesajını gösterir ve bir sonraki eli bu
+// kazananın başlatacağını (nextStarter) kaydeder.
 function endGame(winner){
   gameOver=true;
   const loser = opp(winner);
@@ -336,6 +384,9 @@ function endGame(winner){
   sfx.win();
 }
 
+// "Zar At" işleminin tamamı: iki zar atar (çift gelirse 4 hamle hakkı),
+// zarları gösterir ve hiç geçerli hamle yoksa "Geç" butonunu açar.
+// Hem üstteki hem alttaki (Beyaz/Siyah'a bakan) buton bu fonksiyonu çağırır.
 function doRoll(){
   if(gameOver) return;
   const d1 = 1+Math.floor(Math.random()*6);
@@ -356,6 +407,8 @@ function doRoll(){
 }
 document.getElementById('rollBtn').addEventListener('click', doRoll);
 
+// Oynanacak hamle kalmadığında sırayı diğer tarafa geçirir; öncesinde geri
+// alınabilmesi için mevcut durum yığına eklenir.
 function doPass(){
   pushUndo();
   switchTurn();
@@ -363,6 +416,7 @@ function doPass(){
 }
 document.getElementById('passBtn').addEventListener('click', doPass);
 
+// Yığındaki son durumu geri yükler (yanlışlıkla basılan hamle/pas'ı iptal eder).
 function doUndo(){
   if(undoStack.length===0) return;
   restoreState(undoStack.pop());
@@ -372,6 +426,7 @@ document.getElementById('undoBtn').addEventListener('click', doUndo);
 
 document.getElementById('restart').addEventListener('click', initState);
 
+// Skoru sıfırlar ve yeni bir maç için açılış zar atışı ekranını açar.
 document.getElementById('resetScoreBtn').addEventListener('click', ()=>{
   score = {w:0, b:0};
   nextStarter = null;
@@ -387,6 +442,7 @@ document.getElementById('resetScoreBtn').addEventListener('click', ()=>{
 let openRollPhase = 'w';
 let openRollDW = null, openRollDB = null;
 
+// Açılış zar atışı modalındaki başlık/buton metnini mevcut aşamaya (openRollPhase) göre günceller.
 function updateOpenRollUI(){
   const btn = document.getElementById('openRollBtn');
   const sub = document.getElementById('openRollSub');
@@ -401,6 +457,7 @@ function updateOpenRollUI(){
   }
   btn.disabled=false;
 }
+// Açılış zar atışı modalını sıfırlayıp gösterir (skor 0-0 olduğunda çağrılır).
 function showOpenRoll(){
   openRollPhase='w';
   openRollDW=null; openRollDB=null;
@@ -413,6 +470,9 @@ function showOpenRoll(){
 function hideOpenRoll(){
   document.getElementById('openRollOverlay').style.display='none';
 }
+// Açılış zar atışı modalındaki tek butonun tüm akışı: önce Beyaz'ın zarı,
+// sonra Siyah'ın zarı atılır; berabere olursa baştan başlanır, kazanan
+// belirlenince "Oyuna Başla" ile asıl oyun (initState) tetiklenir.
 document.getElementById('openRollBtn').addEventListener('click', ()=>{
   const resultEl = document.getElementById('openRollResult');
 
@@ -477,10 +537,15 @@ function syncMirror(){
   document.getElementById('passBtn2').disabled = document.getElementById('passBtn2').disabled || whiteTurn;
 }
 
+// Siyah'a bakan (alt/üst konumdaki, role göre değişen) butonlar da aynı
+// doRoll/doPass/doUndo fonksiyonlarını çağırır — .click() ile birincil
+// butona devretmek yerine, kendi disabled durumuna göre bağımsız çalışırlar.
 document.getElementById('rollBtn2').addEventListener('click', doRoll);
 document.getElementById('passBtn2').addEventListener('click', doPass);
 document.getElementById('undoBtn2').addEventListener('click', doUndo);
 
+// Sıra etiketini ("BEYAZ OYNUYOR" / "SİYAH OYNUYOR" rozeti) günceller ve
+// karşı tarafa bakan kopyasıyla senkronlar.
 function updateHUD(){
   const label = document.getElementById('turnLabel');
   const isWhite = turn==='w';
@@ -489,6 +554,7 @@ function updateHUD(){
   syncMirror();
 }
 
+// Zar atıldığında gösterilecek zar ikonlarını çizer (çift gelirse 4 zar).
 function renderDice(vals, isDouble){
   const area = document.getElementById('diceArea');
   area.innerHTML='';
@@ -502,6 +568,7 @@ function renderDice(vals, isDouble){
   }
   syncMirror();
 }
+// 1-6 arası bir zar değerinin nokta (pip) desenini küçük bir SVG olarak üretir.
 function diePips(n){
   const pos = {
     1:[[13,13]],
@@ -518,6 +585,9 @@ function diePips(n){
 }
 
 // ===== CLICK HANDLING =====
+// Tahta üzerindeki tüm tıklamaları yönetir: önce off tepsisi, sonra bar,
+// sonra normal noktalar sırasıyla kontrol edilir. Bir taş zaten seçiliyse
+// tıklama geçerli bir hedefse hamle uygulanır; değilse yeni bir taş seçilir.
 canvas.addEventListener('click', (e)=>{
   if(gameOver || remaining.length===0) return;
   const rect = canvas.getBoundingClientRect();
@@ -572,6 +642,8 @@ canvas.addEventListener('click', (e)=>{
   }
 });
 
+// Bir hamleden sonra kalan zarları yeniden çizer; zar kalmadıysa "Zar At"ı,
+// hiç hamle yoksa "Geç" butonunu açar.
 function renderRemainingDice(){
   const area = document.getElementById('diceArea');
   area.innerHTML='';
@@ -590,6 +662,8 @@ function renderRemainingDice(){
 }
 
 // ===== DRAWING =====
+// Tahtanın tamamını (zemin, noktalar, taşlar, bar, off tepsisi) canvas
+// üzerine yeniden çizer. Her durum değişikliğinden sonra çağrılır.
 function draw(){
   ctx.clearRect(0,0,W,H);
   // wood background
@@ -682,6 +756,7 @@ function draw(){
 function checkerColor(c){ return c==='w' ? '#f0ead6' : '#20232b'; }
 function checkerStroke(c){ return c==='w' ? '#a89a72' : '#000'; }
 
+// Bir nokta üzerindeki taş yığınını çizer; 5'ten fazla taş varsa üstte "+n" yazar.
 function drawStack(cx, index, color, count){
   const top=isTopRow(index);
   const r=20;
@@ -704,6 +779,7 @@ function drawStack(cx, index, color, count){
   }
 }
 
+// Bardaki taş yığınını çizer (Beyaz alttan yukarı, Siyah üstten aşağı dizilir).
 function drawBarStack(color, count){
   if(count===0) return;
   const cx = barX+barWidth/2;
@@ -728,6 +804,9 @@ function drawBarStack(color, count){
   }
 }
 
+// ===== BAŞLANGIÇ =====
+// Kayıtlı skoru yükle; skor hâlâ 0-0 ve henüz bir başlatıcı belirlenmemişse
+// açılış zar atışı ekranını göster, aksi halde doğrudan oyunu başlat.
 loadScore();
 updateScoreHUD();
 if(nextStarter===null && score.w===0 && score.b===0){

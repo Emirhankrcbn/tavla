@@ -1,5 +1,7 @@
+  /* ===== GENEL SIFIRLAMA ===== */
   * { margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-tap-highlight-color:transparent; }
   html, body { height:100%; overscroll-behavior:none; }
+  /* Sayfa dikey bir akış (başlık -> HUD -> tahta -> alt kontrol satırı) olarak kurulur. */
   body {
     background: radial-gradient(circle at 50% 20%, #2a1e14 0%, #120c07 75%);
     display:flex; flex-direction:column; align-items:center;
@@ -11,6 +13,8 @@
     letter-spacing:3px; font-size:18px; flex:0 0 auto;
     color:#e8b96a; text-shadow:0 0 14px rgba(232,185,106,0.5);
   }
+
+  /* ===== ÜST BİLGİ ALANI (skor tahtası) ===== */
   #hud { display:flex; flex-direction:column; align-items:center; gap:6px; flex:0 0 auto; width:100%; font-size:13px; }
   #scoreBoard { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; }
   .score-pill { padding:5px 12px; border-radius:8px; font-weight:bold; }
@@ -18,11 +22,18 @@
   .score-b { background:#2b2f38; color:#f0ead6; border:1px solid #555; }
   #resetScoreBtn { background:#7a3b3b; color:#fff; padding:5px 12px; font-size:12px; min-height:auto; }
   #resetScoreBtn:hover { background:#9a4b4b; }
+
+  /* ===== SIRA KONTROL ÇUBUKLARI =====
+     #turnRow: Beyaz'a bakan, döndürülmemiş kopya (tahtanın altında, Beyaz oyuncuya yakın).
+     #turnRowBottom: Siyah'a bakan, 180° döndürülmüş kopya (tahtanın üstünde, Siyah oyuncuya yakın).
+     İkisi de script.js'teki syncMirror() ile senkron tutulur. */
   #turnRow, #turnRowBottom {
     display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;
     flex:0 0 auto; width:100%; font-size:13px;
   }
   #turnRowBottom { transform:rotate(180deg); }
+
+  /* Sırası gelen tarafı gösteren, rengine göre parlayan ve hafifçe nabız gibi büyüyüp küçülen rozet. */
   #turnLabel, #turnLabel2 {
     font-weight:800; padding:9px 20px; border-radius:999px;
     font-size:15px; letter-spacing:0.5px;
@@ -38,6 +49,8 @@
     0%, 100% { transform:scale(1); }
     50% { transform:scale(1.05); }
   }
+
+  /* ===== ZAR VE BUTONLAR ===== */
   #diceArea, #diceArea2 { display:flex; gap:6px; min-height:40px; align-items:center; }
   .die {
     width:34px; height:34px; background:#fff; border-radius:6px;
@@ -51,6 +64,9 @@
   }
   button:hover { background:#f5cd8a; }
   button:disabled { background:#5a5040; color:#8a8270; cursor:not-allowed; }
+
+  /* ===== TAHTA ===== */
+  /* Kalan boş alanı doldurur; canvas'ın oranını (aspect-ratio) koruyarak ortalar. */
   #boardWrap {
     flex:1 1 auto; min-height:0; min-width:0; width:100%;
     display:flex; align-items:center; justify-content:center;
@@ -59,9 +75,15 @@
     aspect-ratio: 820 / 600; width:auto; height:auto; max-width:100%; max-height:100%;
     border-radius:10px; box-shadow:0 0 40px rgba(0,0,0,0.6); touch-action:manipulation;
   }
+
+  /* ===== "NASIL OYNANIR" AÇILIR PANELİ ===== */
   #infoDetails { flex:0 0 auto; width:100%; max-width:800px; }
   #infoDetails summary { text-align:center; font-size:12px; color:#d8c9a6; cursor:pointer; padding:4px; }
   #info { margin-top:6px; font-size:12px; color:#b5ab94; text-align:center; line-height:1.6; }
+
+  /* ===== OYUN SONU KATMANI (kazanma mesajı + Yeni Oyun butonu) ===== */
+  /* Tüm ekranı kaplar ama pointer-events:none sayesinde altındaki tahtayı
+     engellemez; sadece #restart butonu tıklanabilir kalır. */
   #overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; pointer-events:none; z-index:20; }
   #msg {
     font-size:28px; font-weight:bold; display:none; text-align:center;
@@ -71,6 +93,9 @@
   #restart { display:none; pointer-events:auto; }
   #undoBtn { background:#4a4038; color:#f0ead6; }
   #undoBtn:hover { background:#5c5044; }
+
+  /* ===== AÇILIŞ ZAR ATIŞI MODALI (skor 0-0 iken kim başlayacağını belirler) ===== */
+  /* pointer-events:auto ile arkadaki tahtayı tamamen bloklayan tam ekran bir katman. */
   #openRollOverlay {
     position:fixed; inset:0; z-index:30; display:none;
     align-items:center; justify-content:center;
@@ -88,7 +113,8 @@
   #openRollResult { font-size:14px; font-weight:bold; color:#e8b96a; min-height:20px; text-align:center; }
 
   /* Telefonu yan çevirince (kısa yükseklik + landscape): tahtayı öncelikle
-     büyüt — HUD'u dar bir yan şeride sıkıştır, başlık ve yardım metnini gizle. */
+     büyüt — HUD'u dar bir yan şeride sıkıştır, başlık ve yardım metnini gizle.
+     Yatay düzende dört sütun oluşur: skor | Siyah'ın kontrolleri | tahta | Beyaz'ın kontrolleri. */
   @media (orientation: landscape) and (max-height: 500px) {
     body { flex-direction:row; align-items:stretch; padding:6px; gap:8px; }
     h1, #infoDetails { display:none; }

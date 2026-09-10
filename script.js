@@ -405,6 +405,11 @@ function finishMoveTail(color){
   selectedOrigin=null; legalMoves=[]; combinedMoves=[];
 
   if(off[color]===15){
+    // Çift zar gelip de son taş(lar) ikinci/üçüncü zarda tahtadan çıkarsa
+    // elde hâlâ kullanılmamış zar kalabilir; bunları temizlemezsek
+    // renderRemainingDice() oyun bittiği hâlde "hiç hamle yok" sanıp
+    // Geç butonunu tekrar açar (kazanandan sonra doPass tur değiştirebilir).
+    remaining=[];
     endGame(color);
     return;
   }
@@ -513,6 +518,7 @@ document.getElementById('rollBtn').addEventListener('click', doRoll);
 // Oynanacak hamle kalmadığında sırayı diğer tarafa geçirir; öncesinde geri
 // alınabilmesi için mevcut durum yığına eklenir.
 function doPass(){
+  if(gameOver) return;
   pushUndo();
   switchTurn();
   renderDice();
@@ -720,12 +726,17 @@ canvas.addEventListener('click', (e)=>{
     }
   }
 
-  // Bir taş seçiliyken, 24 noktanın ve bar'ın DIŞINDA kalan her yere (dar off
-  // tepsisi dahil, ama tek başına ona hapsolmadan) dokunmak taş çıkarır — dar
-  // şeride isabet ettirme zorunluluğu kaldırıldı: herkes kendi tarafındaki
-  // boş bir yere dokunarak taşını toplayabilir.
+  // Bir taş seçiliyken, tahtanın sağındaki tüm boş kenar boşluğuna (eski dar
+  // off tepsisi + çevresi, artık üst sınırla kısıtlanmadan) dokunmak taş
+  // çıkarır — dar şeride isabet ettirme zorunluluğu kaldırıldı. Bu bölge
+  // bilerek SADECE tahtanın sağıyla (boardX+boardW'nin ötesi) sınırlı:
+  // 24 nokta zaten boardX..boardX+boardW × boardY..boardY+boardH dikdörtgenini
+  // tamamen kapladığından, o dikdörtgenin içindeki bir tık asla buraya düşmez
+  // (yani bir noktaya yönelik atışın ıskalanması burada YANLIŞ zarla taş
+  // toplamayı tetiklemez); bu davranış yalnızca gerçekten tahtanın dışına
+  // taşan tıklamalar için geçerlidir.
   if(clickedIndex===null){
-    if(selectedOrigin!==null){
+    if(selectedOrigin!==null && mx>boardX+boardW){
       const mv = legalMoves.find(m=>m.type==='off');
       if(mv){ applyMove(selectedOrigin, mv); renderRemainingDice(); return; }
       const cmv = combinedMoves.find(c=>c.final.type==='off');

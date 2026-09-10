@@ -77,6 +77,16 @@ function isTopRow(index){ return index>=12 && index<=23; }
 // gidebileceği hedefler — sadece tek zarla ulaşılamayan noktalar için anlamlıdır.
 let points, bar, off, turn, remaining, selectedOrigin, legalMoves, combinedMoves, gameOver;
 
+// "Zar At" / "Geç" butonlarının mantıksal (sıradan bağımsız) açık/kapalı durumu.
+// syncMirror() bunlardan ve `turn`dan, HER ÇAĞRIDA baştan hesaplayarak dört butonun
+// (rollBtn/passBtn/rollBtn2/passBtn2) disabled durumunu türetir — böylece syncMirror
+// art arda kaç kez çağrılırsa çağrılsın sonuç hep aynıdır (idempotent). Önceki
+// sürümde bu bilgi doğrudan rollBtn/passBtn'in disabled özelliğinde tutuluyordu;
+// syncMirror'ın "sırası gelmeyeni kilitle" adımı o özelliği KALICI olarak ezdiği
+// için art arda iki çağrı (ör. switchTurn -> doPass'in renderDice'ı) karşı tarafın
+// butonlarını kalıcı olarak kilitli bırakıyordu ("Geç" bastıktan sonra oyun kilitleniyordu).
+let rollEnabled = false, passEnabled = false;
+
 // ===== UNDO (protects against accidental taps) =====
 // Her hamle/pas öncesi tam bir durum anlık görüntüsü (snapshot) buraya eklenir.
 let undoStack = [];
@@ -128,8 +138,8 @@ function initState(){
   updateHUD();
   document.getElementById('msg').style.display='none';
   document.getElementById('restart').style.display='none';
-  document.getElementById('rollBtn').disabled=false;
-  document.getElementById('passBtn').disabled=true;
+  rollEnabled = true;
+  passEnabled = false;
   renderDice();
   draw();
 }
@@ -309,8 +319,7 @@ function snapshotState(){
     msgText: document.getElementById('msg').textContent,
     msgDisplay: document.getElementById('msg').style.display,
     restartDisplay: document.getElementById('restart').style.display,
-    rollBtnDisabled: document.getElementById('rollBtn').disabled,
-    passBtnDisabled: document.getElementById('passBtn').disabled,
+    rollEnabled, passEnabled,
   };
 }
 // Her hamle/pas öncesi çağrılır; mevcut durumu yığına (stack) ekler.
@@ -345,8 +354,8 @@ function restoreState(s){
   msg.textContent = s.msgText;
   msg.style.display = s.msgDisplay;
   document.getElementById('restart').style.display = s.restartDisplay;
-  document.getElementById('rollBtn').disabled = s.rollBtnDisabled;
-  document.getElementById('passBtn').disabled = s.passBtnDisabled;
+  rollEnabled = s.rollEnabled;
+  passEnabled = s.passEnabled;
   const area = document.getElementById('diceArea');
   area.innerHTML='';
   for(const v of remaining){
@@ -437,8 +446,8 @@ function switchTurn(){
   turn = opp(turn);
   remaining=[];
   selectedOrigin=null; legalMoves=[];
-  document.getElementById('rollBtn').disabled=false;
-  document.getElementById('passBtn').disabled=true;
+  rollEnabled = true;
+  passEnabled = false;
   updateHUD();
 }
 
@@ -473,7 +482,7 @@ function endGame(winner){
   msg.textContent = (winner==='w'?'BEYAZ':'SİYAH') + " KAZANDI!" + tag;
   msg.style.display='block';
   document.getElementById('restart').style.display='block';
-  document.getElementById('rollBtn').disabled=true;
+  rollEnabled = false;
   syncMirror();
   sfx.win();
 }
@@ -487,12 +496,12 @@ function doRoll(){
   const d2 = 1+Math.floor(Math.random()*6);
   remaining = d1===d2 ? [d1,d1,d1,d1] : [d1,d2];
   sfx.dice();
-  document.getElementById('rollBtn').disabled=true;
+  rollEnabled = false;
   renderDice([d1,d2], d1===d2);
 
   if(!hasAnyLegalMove(turn)){
     setTimeout(()=>{
-      document.getElementById('passBtn').disabled=false;
+      passEnabled = true;
       syncMirror();
     }, 300);
   }
@@ -618,17 +627,17 @@ function syncMirror(){
 
   document.getElementById('diceArea2').innerHTML = document.getElementById('diceArea').innerHTML;
 
-  document.getElementById('rollBtn2').disabled = document.getElementById('rollBtn').disabled;
-  document.getElementById('passBtn2').disabled = document.getElementById('passBtn').disabled;
   document.getElementById('undoBtn2').disabled = document.getElementById('undoBtn').disabled;
 
   // Üst koltuk (rollBtn/passBtn) hep Beyaz'a, alt koltuk (rollBtn2/passBtn2) hep Siyah'a aittir.
   // Sırası gelmeyen tarafın Zar At / Geç butonu, karşı taraf adına basılmasın diye kilitlenir.
+  // rollEnabled/passEnabled + turn'dan HER SEFERİNDE baştan hesaplanır (önceki
+  // çağrının kilidini "hafızada" tutmaz), böylece art arda çağrılsa da bozulmaz.
   const whiteTurn = turn === 'w';
-  document.getElementById('rollBtn').disabled = document.getElementById('rollBtn').disabled || !whiteTurn;
-  document.getElementById('passBtn').disabled = document.getElementById('passBtn').disabled || !whiteTurn;
-  document.getElementById('rollBtn2').disabled = document.getElementById('rollBtn2').disabled || whiteTurn;
-  document.getElementById('passBtn2').disabled = document.getElementById('passBtn2').disabled || whiteTurn;
+  document.getElementById('rollBtn').disabled = !rollEnabled || !whiteTurn;
+  document.getElementById('passBtn').disabled = !passEnabled || !whiteTurn;
+  document.getElementById('rollBtn2').disabled = !rollEnabled || whiteTurn;
+  document.getElementById('passBtn2').disabled = !passEnabled || whiteTurn;
 }
 
 // Siyah'a bakan (alt/üst konumdaki, role göre değişen) butonlar da aynı
@@ -679,22 +688,14 @@ function diePips(n){
 }
 
 // ===== CLICK HANDLING =====
-// Tahta üzerindeki tüm tıklamaları yönetir: önce off tepsisi, sonra bar,
-// sonra normal noktalar sırasıyla kontrol edilir. Bir taş zaten seçiliyse
-// tıklama geçerli bir hedefse hamle uygulanır; değilse yeni bir taş seçilir.
+// Tahta üzerindeki tüm tıklamaları yönetir: önce bar, sonra normal noktalar
+// sırasıyla kontrol edilir. Bir taş zaten seçiliyse tıklama geçerli bir
+// hedefse hamle uygulanır; değilse yeni bir taş seçilir.
 canvas.addEventListener('click', (e)=>{
   if(gameOver || remaining.length===0) return;
   const rect = canvas.getBoundingClientRect();
   const mx = (e.clientX-rect.left) * (W/rect.width);
   const my = (e.clientY-rect.top) * (H/rect.height);
-
-  // check off tray click (for bearing off when selected)
-  if(selectedOrigin!==null && mx>=offX && mx<=offX+offW){
-    const mv = legalMoves.find(m=>m.type==='off');
-    if(mv){ applyMove(selectedOrigin, mv); renderRemainingDice(); return; }
-    const cmv = combinedMoves.find(c=>c.final.type==='off');
-    if(cmv){ applyCombinedMove(selectedOrigin, cmv); renderRemainingDice(); return; }
-  }
 
   // check bar click
   if(mx>=barX && mx<=barX+barWidth){
@@ -718,7 +719,20 @@ canvas.addEventListener('click', (e)=>{
       clickedIndex=i; break;
     }
   }
-  if(clickedIndex===null) return;
+
+  // Bir taş seçiliyken, 24 noktanın ve bar'ın DIŞINDA kalan her yere (dar off
+  // tepsisi dahil, ama tek başına ona hapsolmadan) dokunmak taş çıkarır — dar
+  // şeride isabet ettirme zorunluluğu kaldırıldı: herkes kendi tarafındaki
+  // boş bir yere dokunarak taşını toplayabilir.
+  if(clickedIndex===null){
+    if(selectedOrigin!==null){
+      const mv = legalMoves.find(m=>m.type==='off');
+      if(mv){ applyMove(selectedOrigin, mv); renderRemainingDice(); return; }
+      const cmv = combinedMoves.find(c=>c.final.type==='off');
+      if(cmv){ applyCombinedMove(selectedOrigin, cmv); renderRemainingDice(); return; }
+    }
+    return;
+  }
 
   // if a legal destination among current legalMoves (tek zar) or combinedMoves (iki zarın toplamı)
   if(selectedOrigin!==null){
@@ -754,9 +768,9 @@ function renderRemainingDice(){
     area.appendChild(d);
   }
   if(remaining.length===0){
-    document.getElementById('rollBtn').disabled = gameOver;
+    rollEnabled = !gameOver;
   } else if(!hasAnyLegalMove(turn)){
-    document.getElementById('passBtn').disabled=false;
+    passEnabled = true;
   }
   syncMirror();
 }
@@ -888,6 +902,9 @@ function drawStack(cx, index, color, count){
 }
 
 // Bardaki taş yığınını çizer (Beyaz alttan yukarı, Siyah üstten aşağı dizilir).
+// Bar zemini çok koyu olduğu için (özellikle Siyah'ın koyu taşı) taşlar orada
+// normal noktalardaki gibi çizilirse neredeyse görünmez oluyor; bu yüzden
+// burada her iki renk için de açık, parlak bir çerçeve kullanıyoruz.
 function drawBarStack(color, count){
   if(count===0) return;
   const cx = barX+barWidth/2;
@@ -901,7 +918,7 @@ function drawBarStack(color, count){
     ctx.arc(cx,cy,r,0,Math.PI*2);
     ctx.fillStyle=checkerColor(color);
     ctx.fill();
-    ctx.lineWidth=2; ctx.strokeStyle=checkerStroke(color);
+    ctx.lineWidth=2.5; ctx.strokeStyle = color==='w' ? checkerStroke(color) : '#c9cbd4';
     ctx.stroke();
     if(s===shown-1 && count>4){
       ctx.fillStyle = color==='w' ? '#1a1206' : '#f0ead6';

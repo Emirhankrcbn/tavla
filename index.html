@@ -16,7 +16,7 @@
   <div id="scoreBoard">
     <div class="score-pill score-w">Beyaz <span id="scoreW">0</span></div>
     <div class="score-pill score-b">Siyah <span id="scoreB">0</span></div>
-    <button id="resetScoreBtn" title="Skoru Sıfırla">Skoru Sıfırla</button>
+    <button id="resetScoreBtn" class="danger-btn" title="Skoru Sıfırla">Skoru Sıfırla</button>
   </div>
 </div>
 
@@ -36,6 +36,7 @@
   <button id="rollBtn2">Zar At</button>
   <button id="passBtn2" disabled>Hamle Yok - Geç</button>
   <button id="undoBtn2" disabled title="Son Hamleyi Geri Al">↩ Geri Al</button>
+  <button id="resignBtn2" class="danger-btn" title="Siyah Pes Ediyor">Pes Et</button>
 </div>
 
 <!-- Tavla tahtası: tüm oyun mantığı canvas üzerine JavaScript ile çizilir. -->
@@ -50,6 +51,7 @@
   <button id="rollBtn">Zar At</button>
   <button id="passBtn" disabled>Hamle Yok - Geç</button>
   <button id="undoBtn" disabled title="Son Hamleyi Geri Al">↩ Geri Al</button>
+  <button id="resignBtn" class="danger-btn" title="Beyaz Pes Ediyor">Pes Et</button>
 </div>
 
 <!-- Oyun bitince görünen kazanma mesajı ve "Yeni Oyun" butonu (tahtanın üzerine yarı saydam kaplama). -->
@@ -70,6 +72,20 @@
     </div>
     <div id="openRollResult"></div>
     <button id="openRollBtn">Zar At</button>
+  </div>
+</div>
+
+<!-- Pes etme onay modalı: "Pes Et" butonuna basınca doğrudan oyunu bitirmek yerine
+     burada bir kez daha onay istenir (yanlışlıkla basmayı engellemek için).
+     Vazgeç ile kapatılırsa hiçbir şey değişmez. -->
+<div id="resignConfirmOverlay">
+  <div class="modal-box">
+    <div id="resignConfirmTitle">Pes Etmek İstediğine Emin misin?</div>
+    <div id="resignConfirmSub"></div>
+    <div id="resignConfirmActions">
+      <button id="resignCancelBtn">Vazgeç</button>
+      <button id="resignConfirmBtn" class="danger-btn">Evet, Pes Et</button>
+    </div>
   </div>
 </div>
 

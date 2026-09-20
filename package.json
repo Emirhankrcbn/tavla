@@ -1,0 +1,8 @@
+{
+  "name": "tavla",
+  "private": true,
+  "description": "Klasik kurallarla, 2 kişilik tavla (backgammon) uygulaması.",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}

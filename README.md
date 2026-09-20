@@ -11,6 +11,7 @@ Klasik kurallarla, 2 kişilik, aynı cihazdan (yüz yüze) sırayla oynanan tam 
 - Barda taşın varsa önce onu oyuna sokman gerekir
 - Tüm taşların iç tahtana girince taşları dışarı (off) çıkarabilirsin
 - Yanlışlıkla bastıysan " Geri Al" ile son hamleni veya geçişini geri alabilirsin
+- Kaybedeceğin kesinse "Pes Et" ile rakibe 1 puan verip eli bitirebilirsin (yanlışlıkla basmaya karşı bir onay ekranı çıkar)
 
 ## Özellikler
 - Standart 15'er taş dizilişi, tam kurallar (vurma, bar, bear-off)
@@ -19,6 +20,7 @@ Klasik kurallarla, 2 kişilik, aynı cihazdan (yüz yüze) sırayla oynanan tam 
 - Karşılıklı (yüz yüze) oynanış için tahtanın altında 180° döndürülmüş, üsttekiyle senkron ikinci bir kontrol çubuğu — herkesin "Zar At" butonu kendine bakar
 - Sırası gelen tarafı gösteren, rengine göre parlayan büyük bir rozet ("BEYAZ OYNUYOR" / "SİYAH OYNUYOR")
 - Son hamleyi/geçişi geri alma butonu
+- Pes etme butonu (kaybı kesin görünen oyuncu eli bırakıp rakibe 1 puan verebilir); yanlış tıklamayı önlemek için onay modalı ister
 - Zar, hamle, vuruş ve kazanma sesleri
 - Mobil ve yatay (landscape) ekranlara uyumlu düzen
 - Harici bağımlılık yok — sade HTML + CSS + JS (`index.html`, `style.css`, `script.js`)

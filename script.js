@@ -7,7 +7,7 @@ const W = canvas.width, H = canvas.height;
 // Tarayıcılar kullanıcı etkileşimi olmadan ses çalmaya izin vermediği için
 // ilk tıklama/tuş basımında AudioContext "unlock" edilir.
 const actx = new (window.AudioContext || window.webkitAudioContext)();
-function unlockAudio(){ if(actx.state==="suspended") actx.resume(); }
+function unlockAudio(){ if(actx.state==='suspended') actx.resume(); }
 window.addEventListener('click', unlockAudio);
 window.addEventListener('keydown', unlockAudio);
 
@@ -319,7 +319,7 @@ function snapshotState(){
     msgText: document.getElementById('msg').textContent,
     msgDisplay: document.getElementById('msg').style.display,
     restartDisplay: document.getElementById('restart').style.display,
-    rollEnabled, passEnabled,
+    rollEnabled, passEnabled
   };
 }
 // Her hamle/pas öncesi çağrılır; mevcut durumu yığına (stack) ekler.
@@ -456,11 +456,30 @@ function switchTurn(){
   updateHUD();
 }
 
+// Bir eli bitiren her yolun (normal kazanış veya pes etme) ortak kapanışı:
+// skoru/nextStarter'ı günceller, seçim durumunu temizler, kazanma mesajını
+// gösterir, tahtayı son haliyle yeniden çizer ve kazanma sesini çalar.
+function finishGameEnd(winner, earned, msgText){
+  gameOver = true;
+  score[winner] += earned;
+  nextStarter = winner;
+  saveScore();
+  updateScoreHUD();
+  selectedOrigin = null; legalMoves = []; combinedMoves = [];
+
+  const msg = document.getElementById('msg');
+  msg.textContent = msgText;
+  msg.style.display = 'block';
+  document.getElementById('restart').style.display = 'block';
+  rollEnabled = false;
+  syncMirror();
+  draw();
+  sfx.win();
+}
+
 // Oyunu bitirir: mars/çifte mars durumuna göre kazanılan puanı hesaplar,
-// skoru günceller, kazanma mesajını gösterir ve bir sonraki eli bu
-// kazananın başlatacağını (nextStarter) kaydeder.
+// ortak kapanışı (finishGameEnd) tetikler.
 function endGame(winner){
-  gameOver=true;
   const loser = opp(winner);
   let earned = 1;
   let tag = '';
@@ -478,19 +497,48 @@ function endGame(winner){
     earned = doubleMars ? 3 : 2;
     tag = doubleMars ? ' (ÇİFTE MARS! +3)' : ' (MARS! +2)';
   }
-  score[winner] += earned;
-  nextStarter = winner;
-  saveScore();
-  updateScoreHUD();
-
-  const msg=document.getElementById('msg');
-  msg.textContent = (winner==='w'?'BEYAZ':'SİYAH') + " KAZANDI!" + tag;
-  msg.style.display='block';
-  document.getElementById('restart').style.display='block';
-  rollEnabled = false;
-  syncMirror();
-  sfx.win();
+  finishGameEnd(winner, earned, (winner==='w'?'BEYAZ':'SİYAH') + ' KAZANDI!' + tag);
 }
+
+// ===== PES ETME (RESIGN) =====
+// Bir tarafın oyunu bırakıp rakibe kazanç vermesi. Yanlışlıkla basmaya karşı
+// "Pes Et" doğrudan oyunu bitirmez; önce resignConfirmOverlay'de bir kez daha
+// onay istenir (bkz. openResignConfirm). Onaylanırsa resignGame çağrılır.
+let resigningSide = null;
+
+// Pes eden tarafın kazanılan puanı her zaman 1'dir (mars/çifte mars hesabı
+// yapılmaz, çünkü tahtanın son durumu pes edildiği anki durumdur ve gerçek
+// bir "kaybediş" göstergesi değildir).
+function resignGame(resigningColor){
+  if(gameOver) return;
+  pushUndo(); // yanlışlıkla onaylanmışsa "Geri Al" ile telafi edilebilsin
+  const winner = opp(resigningColor);
+  finishGameEnd(winner, 1, (resigningColor==='w'?'BEYAZ':'SİYAH') + ' PES ETTİ! ' +
+                            (winner==='w'?'BEYAZ':'SİYAH') + ' KAZANDI!');
+}
+
+// Pes etme onay modalını açar; hangi tarafın pes ettiğini resigningSide'da tutar.
+function openResignConfirm(side){
+  if(gameOver) return;
+  resigningSide = side;
+  document.getElementById('resignConfirmSub').textContent =
+    (side==='w'?'Beyaz':'Siyah') + ' pes edecek, ' + (side==='w'?'Siyah':'Beyaz') +
+    ' oyunu 1 puanla kazanacak. Bu işlem geri alınamaz (istersen sonradan "Geri Al" ile telafi edebilirsin).';
+  document.getElementById('resignConfirmOverlay').style.display='flex';
+}
+function closeResignConfirm(){
+  resigningSide = null;
+  document.getElementById('resignConfirmOverlay').style.display='none';
+}
+
+document.getElementById('resignBtn').addEventListener('click', ()=>openResignConfirm('w'));
+document.getElementById('resignBtn2').addEventListener('click', ()=>openResignConfirm('b'));
+document.getElementById('resignCancelBtn').addEventListener('click', closeResignConfirm);
+document.getElementById('resignConfirmBtn').addEventListener('click', ()=>{
+  const side = resigningSide;
+  closeResignConfirm();
+  if(side) resignGame(side);
+});
 
 // "Zar At" işleminin tamamı: iki zar atar (çift gelirse 4 hamle hakkı),
 // zarları gösterir ve hiç geçerli hamle yoksa "Geç" butonunu açar.
@@ -644,6 +692,11 @@ function syncMirror(){
   document.getElementById('passBtn').disabled = !passEnabled || !whiteTurn;
   document.getElementById('rollBtn2').disabled = !rollEnabled || whiteTurn;
   document.getElementById('passBtn2').disabled = !passEnabled || whiteTurn;
+
+  // Pes Et butonları sıraya bağlı değildir (herhangi bir taraf, sırası
+  // kendinde olmasa da pes edebilir); sadece oyun bittiğinde kilitlenir.
+  document.getElementById('resignBtn').disabled = gameOver;
+  document.getElementById('resignBtn2').disabled = gameOver;
 }
 
 // Siyah'a bakan (alt/üst konumdaki, role göre değişen) butonlar da aynı
